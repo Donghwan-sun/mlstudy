@@ -19,6 +19,7 @@ cv_accuary = []
 
 for train_index, test_index in skfold.split(feature, label):
     X_train, X_test = feature[train_index], feature[test_index]
+
     Y_train, Y_test = label[train_index], label[test_index]
 
     dt_clf.fit(X_train, Y_train)
