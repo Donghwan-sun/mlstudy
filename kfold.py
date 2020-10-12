@@ -16,7 +16,6 @@ print('붓꽃 데이터의 크기', features.shape[0])
 n_iter = 0
 
 for train_index, test_index in kfold.split(features):
-
     X_train, X_test = features[train_index], features[test_index]
     Y_train, Y_test = label[train_index], label[test_index]
 

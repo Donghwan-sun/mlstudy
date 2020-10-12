@@ -8,7 +8,9 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
-
+from sklearn.model_selection import KFold
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
 pd.set_option('display.max_row', 500)
 pd.set_option('display.max_columns', 100)
 
@@ -68,8 +70,44 @@ def transform_feature(df):
 
     return df
 
+#KFold
+def exec_Kfold(clf,  fold=5 ):
+    kfold = KFold(n_splits=fold)
+    scores = []
+
+    for iter_count, (train_index, test_index) in enumerate(kfold.split(X_titanic)):
+        x_train, x_test = X_titanic.values[train_index], X_titanic.values[test_index]
+        y_train, y_test = Y_titanic.values[train_index], Y_titanic.values[test_index]
+
+        clf.fit(x_train, y_train)
+        pre = clf.predict(x_test)
+        accuracy = accuracy_score(y_test, pre)
+        scores.append(accuracy)
+        print('교차 검증 {0} 정확도:{1:4f}'.format(iter_count, accuracy))
+
+    mean_score = np.mean(scores)
+    print("평균 정확도: {0:.4f}".format(mean_score))
+def cross_var(clf, x_data, y_data, cv):
+    scores = cross_val_score(clf, x_data, y_data, cv=cv)
+    for iter_count, accuary in enumerate(scores):
+        print('교차 검증 {0} 정확도: {1:.4f}'.format(iter_count, accuary))
+
+    print("cross var 평균 정확도:{0:.4f}".format(np.mean(scores)))
+def GridSearch(clf, x_data, y_data, x_test_data, y_test_data, parameters, cv):
+    grid_dclf = GridSearchCV(clf, param_grid=parameters, scoring='accuracy', cv=cv)
+    grid_dclf.fit(x_data, y_data)
+
+    print('GridSearchCV 최적 하이퍼 파라미터:', grid_dclf.best_params_)
+    print('GridSearchCV 최고 정확도:{0:.4f}'.format(grid_dclf.best_score_))
+    best_dclf = grid_dclf.best_estimator_
+
+    dpredictions = best_dclf.predict(x_test_data)
+    accuracy = accuracy_score(y_test_data, dpredictions)
+    print('테스트 셋에서의 정확도:{0:.4f}'.format(accuracy))
+
+parameters = {'max_depth':[2, 3, 5, 10], 'min_samples_split':[2, 3, 5], 'min_samples_leaf':[1, 5, 8]}
 titanic_df = pd.read_csv('./titanic/train.csv')
-print(titanic_df.info())
+
 X_titanic = titanic_df.drop('Survived', axis=1)
 Y_titanic = titanic_df['Survived']
 
@@ -79,20 +117,13 @@ X_train, X_test, Y_train, Y_test = train_test_split(X_titanic, Y_titanic, test_s
 
 dt_cls = DecisionTreeClassifier(random_state=11)
 rf_cls = RandomForestClassifier(random_state=11)
-lr_cls = LogisticRegression()
+#lr_cls = LogisticRegression()
 
-#DecisionTree
-dt_cls.fit(X_train, Y_train)
-dt_pred = dt_cls.predict(X_test)
-print('Decision:', accuracy_score(Y_test, dt_pred))
 
-#RandomForest
-rf_cls.fit(X_train, Y_train)
-rf_pred = rf_cls.predict(X_test)
-print('Randomforest:', accuracy_score(Y_test, rf_pred))
-
-#Logistic regression
-lr_cls.fit(X_train, Y_train)
-lr_pred = lr_cls.predict(X_test)
-print('LogisticRegression:', accuracy_score(Y_test, lr_pred))
-
+exec_Kfold(dt_cls, fold=5)
+exec_Kfold(rf_cls, fold=5)
+cross_var(dt_cls, X_titanic, Y_titanic, 5)
+cross_var(rf_cls, X_titanic, Y_titanic, 5)
+#exec_Kfold(lr_cls, fold=5)
+GridSearch(dt_cls, X_titanic, Y_titanic, X_test, Y_test, parameters, 5)
+GridSearch(rf_cls, X_titanic, Y_titanic, X_test, Y_test, parameters, 5)
