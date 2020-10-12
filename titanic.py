@@ -3,6 +3,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import preprocessing
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+pd.set_option('display.max_row', 500)
+pd.set_option('display.max_columns', 100)
 
 def get_category(age):
     cat = ''
@@ -26,30 +34,65 @@ def encode_features(dataDF):
 
     return dataDF
 
-pd.set_option('display.max_row', 500)
-pd.set_option('display.max_columns', 100)
+#Null 제거 함수
+def fillna(df):
+    df['Age'].fillna(df['Age'].mean(), inplace=True)
+    df['Cabin'].fillna('N', inplace=True)
+    df['Embarked'].fillna('N', inplace=True)
+    df['Fare'].fillna(0, inplace=True)
+
+    return df
+
+#불필요한 특징제거
+def drop_feature(df):
+    df.drop(['PassengerId', 'Name', 'Ticket'], axis=1, inplace=True)
+
+    return df
+
+#특징 포맷 설정
+def format_feature(df):
+    df['Cabin'] = df['Cabin'].str[:1]
+    features = ['Cabin', 'Sex', 'Embarked']
+    for feature in features:
+        le = preprocessing.LabelEncoder()
+        le = le.fit(df[feature])
+        df[feature] = le.transform(df[feature])
+
+    return df
+
+#특징 변환
+def transform_feature(df):
+    df = fillna(df)
+    df = drop_feature(df)
+    df = format_feature(df)
+
+    return df
 
 titanic_df = pd.read_csv('./titanic/train.csv')
-print(titanic_df.head(3))
 print(titanic_df.info())
-titanic_df['Age'].fillna(titanic_df['Age'].mean(), inplace=True)
-titanic_df['Cabin'].fillna('N', inplace=True)
-titanic_df['Embarked'].fillna('N', inplace=True)
-print('데이터 세트 Null값의 개수:', titanic_df.isnull().sum().sum())
-print('Sex 값의 분포:\n', titanic_df['Sex'].value_counts())
-print('Cabin 값의 분포:\n', titanic_df['Cabin'].value_counts())
-print('Embarked 값의 분포:\n', titanic_df['Embarked'].value_counts())
+X_titanic = titanic_df.drop('Survived', axis=1)
+Y_titanic = titanic_df['Survived']
 
-titanic_df['Cabin'] = titanic_df['Cabin'].str[:1]
-print(titanic_df.groupby(['Sex', 'Survived'])['Survived'].count())
+X_titanic = transform_feature(X_titanic)
 
+X_train, X_test, Y_train, Y_test = train_test_split(X_titanic, Y_titanic, test_size=0.2, random_state=11)
 
-plt.figure(figsize=(10, 6))
-group_names = ['Unknown', 'Baby', 'Child', 'Teenager', 'Student', 'Young Adult', 'Adult', 'Elderly']
-titanic_df['Age_cat'] = titanic_df['Age'].apply(lambda x : get_category(x))
-ax = plt.plot()
-ax = sns.barplot(x='Age_cat', y='Survived', hue='Sex', data=titanic_df, order=group_names)
-titanic_df.drop('Age_cat', axis=1, inplace=True)
-plt.show()
+dt_cls = DecisionTreeClassifier(random_state=11)
+rf_cls = RandomForestClassifier(random_state=11)
+lr_cls = LogisticRegression()
 
-titanic_df = encode_features(titanic_df)
+#DecisionTree
+dt_cls.fit(X_train, Y_train)
+dt_pred = dt_cls.predict(X_test)
+print('Decision:', accuracy_score(Y_test, dt_pred))
+
+#RandomForest
+rf_cls.fit(X_train, Y_train)
+rf_pred = rf_cls.predict(X_test)
+print('Randomforest:', accuracy_score(Y_test, rf_pred))
+
+#Logistic regression
+lr_cls.fit(X_train, Y_train)
+lr_pred = lr_cls.predict(X_test)
+print('LogisticRegression:', accuracy_score(Y_test, lr_pred))
+
